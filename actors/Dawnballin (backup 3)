@@ -1,0 +1,1596 @@
+/*
+================================================================================
+ Splot2 ZScript Code
+ 
+ Author: Shadsy, Techokami, The Kinsie
+ 
+ Purpose: SPORTS
+ 
+ Comment: 
+
+================================================================================
+*/
+
+// Basketball
+class Dawnballin : SelacoWeapon //Splot_Weapon
+{
+	Default
+	{
+		WeaponBase.SelectionOrder 2900;
+		Radius 12;
+		Height 24;
+		+FORCEXYBILLBOARD
+		+INVENTORY.ALWAYSPICKUP
+		Inventory.PickupSound "weapons/sports/bball/select";
+		Inventory.PickupMessage "$GOTBBALL";
+		Tag "$TAGBASKETBALL";
+		WeaponBase.SlotNumber 7;
+		WeaponBase.SlotPriority 40;
+		Scale 0.3;
+		+WEAPONBASE.AMMO_OPTIONAL
+		WeaponBase.UpSound "weapons/sports/bball/select";
+		Inventory.Icon "WPNBBALL";
+		//Splot_Weapon.HudIcon "BBALAMMO";
+		SelacoWeapon.HideAmmo true;
+//		SelacoWeapon.meleeSprite "BASB";
+		SelacoWeapon.SlidingSprite "B111";
+		SelacoWeapon.BulletDamageToGlass 99999;
+		SelacoWeapon.BulletForceToGlass 30;
+		SelacoWeapon.WeaponDamage 550;
+		-WeaponBase.NO_AUTO_SWITCH;
+	}
+	
+	bool SuperDunkState;
+	bool Nogrenadewhileballin;
+	bool lookingforrebound;
+	bool flydunk;
+	double forwardvel;
+	double sidevel;
+	double pitchdown;
+	
+	override void throwEquipmentItem()
+    {
+        if(SuperDunkState || Nogrenadewhileballin)
+        {
+            return;
+        }
+        super.throwEquipmentItem();
+    }
+	
+	States
+	{
+	equip:
+	Select:
+		BASB B 0 {			
+			A_TakeInventory("DawnballinReboundCatch");
+			invoker.lookingforrebound = false;
+		}
+	SelectLoop:
+//		BASB B 1 A_SmoothRaise;
+		TNT1 A 0 A_EnableWeaponShift();
+		BASB B 1 A_Raise(15);
+		TNT1 A 0 A_EquipNewWeapon();
+		TNT1 A 0 checkPlayerStates();
+		TNT1 A 0 S_WeaponReady();
+		loop;
+	
+	Ready:
+	ReallyReady:
+		TNT1 A 0 {invoker.SuperDunkState = false;}
+		TNT1 A 0 {invoker.Nogrenadewhileballin = false;}
+		TNT1 A 0 A_TakeInventory("CancelAnimation", 1);
+//		TNT1 A 0 A_JumpIfInventory("Reloading",1,"Dribble");
+		TNT1 A 0 A_JumpIfInventory("MeleeButton", 1, "AltFire");
+		TNT1 A 0 A_JumpIfInventory("ShowHands",1,"HandRemoved");
+		TNT1 A 0 A_JumpIfInventory("ShieldEyes",1,"doShieldEyes");
+		TNT1 A 0 A_JumpIfInventory("PushButtonNow", 1, "PushButton");
+		BASB BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB 1 {
+			S_WeaponReady();
+			checkPlayerStates();
+			S_WeaponOffset();
+			A_EnableWeaponShift();
+		
+			if (CheckInventory("MeleeButton", 1))
+			{
+			A_STOPSOUND(CHAN_WEAPON);
+						SetWeaponState("AltFire");
+			}
+
+		}
+		BASB B 0 A_JumpIf(self.pos.z == GetZAt(self.pos.x, self.pos.y), "Dribble");
+		loop;
+	ReloadWeapon:
+		TNT1 A 0
+		{
+			A_TakeInventory("Reloading", 1);
+		}
+	Dribble:
+		TNT1 A 0 {invoker.Nogrenadewhileballin = true;}
+		BASB F 2 { A_WeaponOffset(0,36,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB F 2 { A_WeaponOffset(0,55,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB F 2 { A_WeaponOffset(0,80,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB F 2 { A_WeaponOffset(0,120,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB F 2
+		{ 
+			A_WeaponOffset(0,150,WOF_INTERPOLATE);
+			S_WeaponReady(WRF_NOBOB|WRF_DISABLESWITCH);
+			A_StartSound("weapons/sports/bball/bounce", CHAN_BODY, CHANF_OVERLAP);
+		}
+		BASB F 2 { A_WeaponOffset(0,120,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB F 2 { A_WeaponOffset(0,80,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB B 2 { A_WeaponOffset(0,55,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB B 2 { A_WeaponOffset(0,36,WOF_INTERPOLATE); S_WeaponReady(WRF_NOBOB); }
+		BASB B 0 A_JumpIf(self.pos.z != GetZAt(self.pos.x, self.pos.y), "Ready");
+		BASB B 0 A_Jump(128, "Dribble");
+		goto Ready;
+	Deselect:
+		#### # 0
+		{
+//			A_StartSound("weapons/shared/switch",32);
+//			invoker.switching = true;
+			A_WeaponOffset(0,32);
+		}
+	DeselectLoop:
+//		#### # 1 A_SmoothLower;
+		#### # 1 A_Lower(15);
+		Loop;
+	
+	NoGrenade:
+		TNT1 A 0;
+		TNT1 A 0 ACS_NamedExecute("NoNades", 0);
+		goto Ready;
+	ShatterWindow:
+	HandRemovedGrenadeToss:
+	HandRemoved:
+	HandRemovedBridge:
+//	ThrowEquipment: // yeah fuck it, disable grenades, see if I care.
+	ReturnHands:
+		BASB B 1;
+		Goto Ready; 
+	Fire:
+		TNT1 A 0 {invoker.Nogrenadewhileballin = true;}
+		BASB C 2 A_WeaponOffset(0,32,WOF_INTERPOLATE);
+		BASB D 2;
+		BASB D 1 A_WeaponOffset(0,8,WOF_INTERPOLATE);
+		BASB D 1 A_WeaponOffset(0,22,WOF_INTERPOLATE);
+		BASB D 2 A_WeaponOffset(0,36,WOF_INTERPOLATE);
+		BASB D 2 A_WeaponOffset(0,48,WOF_INTERPOLATE);
+		BASB E 0
+		{
+			// Manually spawn the ball to make sure it bounces.
+			// Using A_FireProjectile, the ball will just fall to the ground
+			// if thrown point-blank against something.
+			// We'll also calculate the forwardvel and sidevel player variables
+			// to sync the ball up with the player's forward movement.
+			// We're only interested in forward movement,
+			// so if it's less than 0, toss it out.
+			
+			// Thanks D2JK for figuring this formula out!
+			invoker.forwardvel = max(0,(sin(angle)*(vel.y)) + (cos(angle)*(vel.x)));
+			invoker.sidevel = -((cos(angle)*(vel.y)) - (sin(angle)*(vel.x)));
+//			class<Inventory> ballsanity = "PowerBallsanity";
+//			if (ballsanity && FindInventory(ballsanity)) {
+//				A_SpawnItemEx("Splot_SuperBasketballProjectile",0,0,height*(4./7.),40*cos(pitch)+invoker.forwardvel,invoker.sidevel*0.75,40*-sin(pitch),0,SXF_SETTARGET);
+//			} else {
+			A_SpawnItemEx("DawnballinProjectile",0,0,height*(4./7.),20*cos(pitch)+invoker.forwardvel,invoker.sidevel*0.75,20*-sin(pitch),0,SXF_SETTARGET);
+//			}
+			A_StartSound("weapons/sports/bball/throw",CHAN_WEAPON);
+			invoker.lookingforrebound = true;
+		}
+		BASB E 1 A_WeaponOffset(0,-8,WOF_INTERPOLATE);
+		BASB E 3 A_WeaponOffset(0,-16,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,-12,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,-8,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,0,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,8,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,16,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,24,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,32,WOF_INTERPOLATE);
+		
+		// If the ball rebounds quickly, it's possible to catch the ball
+		// while the throwing animation is still playing. In that case,
+		// we do not want to take the ball out of your inventory!
+		
+		// Picking up a rebound gives you a token that tells us that
+		// the player caught the ball. If we don't have this token,
+		// remove the weapon. If we DO have the token, take us back
+		// to the Select state, like we just picked up the weapon.
+		
+		// This check is ignored if unlimited ammo is enabled.
+		
+		// The rebound token is removed during the Select state,
+		// as well as any time lookingforrebound is false.
+		
+		BASB E 0 A_JumpIf(!CountInv("DawnballinReboundCatch") && !CountInv("PowerInfiniteAmmo") && !sv_infiniteammo,"ByeBall");
+		BASB E 1 A_WeaponOffset(0,64,WOF_INTERPOLATE);
+		BASB E 1 A_WeaponOffset(0,128,WOF_INTERPOLATE);
+		TNT1 A 0 
+		{
+			// Set the sprite back to the y position it had before the
+			// SmoothRaise animation, like we're picking it up again.
+			
+			self.player.GetPSprite(PSP_WEAPON).y = 128;
+		}
+		Goto Select;
+	AltFire:
+		// It's dunk time
+		// First, check if the player is in water. No dunking in water!
+	
+		BASB B 0 A_JumpIf(self.waterlevel == 3, "Ready");
+		
+		// Lanuch the player in the air. If we have the Sports Shoes,
+		// prepare the Superdunk by launching the player higher.
+		// Set a boolean variable so the Superdunk continues even if
+		// we lose the shoes.
+		
+		BASB B 0
+		{
+			invoker.SuperDunkState = true;
+			A_WeaponOffset(0,32,WOF_INTERPOLATE);
+			ThrustThing((angle*256/360),5,0,0);
+			ThrustThingZ(0,80,0,0);			
+			A_StartSound("weapons/sports/bball/dunkstart", CHAN_WEAPON);
+		}
+		BASB F 1;
+		BASB F 1 A_WeaponOffset(13,-4,WOF_INTERPOLATE);
+		BASB F 1 A_WeaponOffset(26,-8,WOF_INTERPOLATE);
+		BASB F 1 A_WeaponOffset(39,-12,WOF_INTERPOLATE);
+		BASB F 1 A_WeaponOffset(52,-18,WOF_INTERPOLATE);
+		BASB F 1 A_WeaponOffset(65,-24,WOF_INTERPOLATE);
+		Goto Dunk1;
+	Dunk1:
+		// This will loop while the player is moving up
+		
+		BASB G 0;
+				
+		// If the player is flying, go right for Dunk Phase 3.
+		
+		BASB G 0 A_JumpIf(self.bFly == true, "Dunk3");
+		
+		// Using a LineTrace, if we detect an enemy within 64 units
+		// in front of us, cut to the dunk. This lets us dunk on airborne
+		// enemies or very tall enemies like bosses.
+		
+		// Because this doesn't start until 6 tics after the dunk begins,
+		// it avoids auto-dunking on normal enemies at ground level.
+		
+		BASB G 1
+		{
+			FLineTraceData VibeCheck;
+			// Check directly ahead, rather than at pitch
+			// This helps with consistency if the player is looking up
+			LineTrace (angle, 64, 0, offsetz: self.Player.ViewHeight, data: VibeCheck);
+			if (VibeCheck.HitType == TRACE_HitActor && VibeCheck.HitActor.bIsMonster)
+			{
+				return A_JumpIf(256,"Megadunk");
+			}
+			else
+			{
+				return state(null);
+			}
+		}
+		
+		// Gradually slow down the player's z velocity faster than gravity
+		
+		BASB G 0 ThrustThingZ(0,1,1,1);
+		
+		// If we hit the floor while still moving up, cut to the dunk.
+		// This could happen if the player lands on a higher floor
+		// while dunk-jumping. 
+		
+		BASB G 0 A_CheckFloor("Megadunk");
+		BASB G 0
+		{
+			if (self.vel.z < 0)
+			{
+				return A_Jump(256,"Dunk2");
+			}
+			return state(null);
+		}
+		Loop;
+	Dunk2:
+		// Dunk Phase 2
+		// Once we've stopped moving up, SLAM down.
+	
+		BASB G 0
+		{
+			ThrustThingZ(0,30,1,0);
+		}
+		Goto Dunk3;
+	Dunk3:
+		// Dunk Phase 3
+		// Perform the same LineTrace check to look for enemies.
+		// If we find an enemy, or anything stops our z velocity,
+		// or if we hit water, start the dunk effect.
+		
+		// Dunk Phase 3 also checks if the player is flying.
+		// This enables flying dunks. The LineTrace will now check
+		// for any obstacle, which also enables a special ball bounce
+		// that shoots away from the player.
+		// It'll now also check how close the player is to the ground
+		// rather than waiting for their z velocity to reach 0.
+		
+		// If we're somehow going back up (like using the pogo stick),
+		// return to the earlier phase of the dunk)
+	
+		BASB G 1
+		{
+			FLineTraceData VibeCheck;
+			LineTrace (angle, 64, pitch, offsetz: self.Player.ViewHeight, data: VibeCheck);
+			if (self.bFly)
+			{
+				ThrustThing(self.angle*256./360.,3*cos(self.pitch),1,0);
+				if (self.pitch > 20)
+				{
+					invoker.pitchdown = (self.pitch-20)/1.5;
+				}
+				else { invoker.pitchdown = 0; }
+				ThrustThingZ(0,1+invoker.pitchdown,1,1);
+				if (VibeCheck.HitType != TRACE_HitNone)
+				{
+					invoker.flydunk = true;
+					return A_JumpIf(256,"Megadunk");
+				}
+				if (self.pos.z <= (self.GetZAt()+16))
+				{
+					return A_JumpIf(256,"Megadunk");
+				}
+				else
+				{
+					return state(null);
+				}
+			}
+			else
+			{
+				if (VibeCheck.HitActor is "SOLDIER")
+				{
+					invoker.flydunk = true;
+					return A_JumpIf(256,"Megadunk");
+				}
+				else
+				{
+					return state(null);
+				}
+			}
+		}
+		BASB G 0 A_JumpIf(self.vel.z > 0,"Dunk1");
+		BASB G 0 A_JumpIf(self.vel.z == 0,"Megadunk");
+		BASB G 0 A_JumpIf(self.waterlevel >= 1, "Megadunk");
+		Loop;
+	Megadunk:
+		// Here we go!
+		
+		// Summon a dunk hotspot slightly in front of the player.
+		// The dunk hotspot is what creates the dunk explosion.
+		// This improves the feel of the dunk by targeting enemies that
+		// the player can see rather than enemies behind them.
+		// The position of the dunk hotspot is based on the player's pitch,
+		// so if you're looking directly down, the hotspot will spawn directly
+		// below you.
+		
+		// If Superdunk is in effect, spawn an even deadlier dunk hotspot.
+		
+		// If flying dunk is in effect, bounce the ball away from the player
+		// since we're slamming into a wall/obstacle.
+		
+		BASB F 2
+		{
+			A_WeaponOffset(39,-12,WOF_INTERPOLATE);
+			A_SpawnItemEx("Splot_DunkHotspot",cos(self.pitch)*64);
+			A_Quake (6,8,0,2048,0);
+			ThrustThingZ(0,20,1,1);
+			A_StartSound("weapons/sports/bball/dunkslam", 48, CHANF_OVERLAP);
+			invoker.lookingforrebound = true;
+		}
+		BASB H 1
+		{
+			if (invoker.flydunk == false)
+			{
+				invoker.forwardvel = (sin(angle)*(vel.y)) + (cos(angle)*(vel.x));
+				invoker.sidevel = -((cos(angle)*(vel.y)) - (sin(angle)*(vel.x)));
+				A_SpawnItemEx("DawnballinProjectile",0,0,0,(random(-3,3)+(invoker.forwardvel*0.5)),(random(-3,3)+(invoker.sidevel*0.5)),random(10,18));
+			}
+			
+			else
+			{
+				int randomdunkspeed = random(10,18);
+				A_SpawnItemEx("DawnballinProjectile",-self.radius,0,0,((randomdunkspeed-2)*-cos(self.pitch))+2,randomdunkspeed*sin(self.pitch),randomdunkspeed*sin(self.pitch));
+				
+			}
+			invoker.flydunk = false;
+		}
+		BASB H 1 A_WeaponOffset(0,12,WOF_INTERPOLATE);
+		BASB H 1 A_WeaponOffset(0,24,WOF_INTERPOLATE);
+		BASB H 1 A_WeaponOffset(0,48,WOF_INTERPOLATE);
+		BASB H 1 A_WeaponOffset(0,60,WOF_INTERPOLATE);
+		TNT1 A 5;
+		BASB H 0 A_JumpIf(!CountInv("DawnballinReboundCatch") && !CountInv("PowerInfiniteAmmo") && !sv_infiniteammo,"ByeBall");
+		BASB H 0
+		{	
+			self.player.GetPSprite(PSP_WEAPON).y = 128;
+		}
+		Goto Select;
+	Byeball:
+		// GZDoom very rarely crashes when removing Dawnballin from
+		// the player's inventory in the middle of a state, so we'll
+		// move that action to a separate dead-end state that
+		// doesn't continue on to anything.
+		TNT1 A 0 {
+			A_TakeInventory("Dawnballin");
+		}
+		Stop;
+	DeadLowered:
+		TNT1 A -1;
+		Stop;
+	
+	Spawn:
+		BASB A -1;
+		Stop;
+//	}
+	
+
+//======================SLIDES====================//
+	SLIDE_Transition:
+		TNT1 A 1 {
+			A_TakeInventory("ShieldEyes", 1);
+			X_SetOverlaySprite(1, invoker.SlidingSprite, invoker.slideFrame);
+			//if(invoker.cameraMotion == 1) {
+				//A_SETROLL(roll+0.5, SPF_INTERPOLATE); This was causing some issues with interpolation, disabled for now!
+			//}
+			S_ZOOMFACTOR(invoker.slideZoom);
+			invoker.slideTransition++;
+			if(getCvar("g_slidezooming") == 1 && getCvar("fov") < 120) {
+				invoker.slideZoom = invoker.slidezoom - 0.02;
+			}
+			if(invoker.slideTransition % 2 == 0) {
+				invoker.slideFrame++;
+			}
+			if(invoker.slideFrame == 2) {
+				SetWeaponState("SLIDE_ShowDawnLegs");
+			}
+			A_SlideRumble();
+			if(invoker.slideShake) 
+			{
+             A_QuakeEx(frandom(0,0.6), frandom(0,0.6), frandom(0,0.1), 2, 0, 700, 0, 0, 0, 0, 0, 0, frandom(0, 0.6), frandom(0, 0.6), frandom(0, 0.6));
+			}
+				}
+		loop;
+
+	SLIDE_ShowDawnLegs:
+		TNT1 A 1 {
+			invoker.activeSlideState = true;
+			A_SlideRumble();
+			X_SetOverlaySprite(1, invoker.SlidingSprite, 2);
+			A_ZOOMFACTOR(invoker.slideZoom);
+			invoker.legSprite = 100;
+			A_OVERLAY(-400, "FirstPersonLegsStand");
+		}
+		goto Slidelooper;
+
+	SlideLooper:
+		TNT1 A 1 {
+				A_SlideRumble();
+				if(invoker.slideShake) {
+					A_QuakeEx(frandom(0,0.5), frandom(0,0.5), frandom(0,0.1), 2, 0, 700, 0, 0, 0, 0, 0, 0, frandom(0, 0.45), frandom(0, 0.45), frandom(0, 0.45));
+				}
+				X_SetOverlaySprite(1, invoker.SlidingSprite, invoker.slideFrame);
+				CheckPlayerStates();
+				A_ZOOMFACTOR(invoker.slidezoom);
+				S_WeaponReady();
+				S_WeaponOffset(frandom(-1,1), frandom(-1,1));
+				// If slidekick failed, try punt
+				if(player.mo is "Dawn") {
+					Dawn(player.mo).puntObject();
+				}
+			}
+      TNT1 A 0 A_JumpIfInventory("StopSliding", 1, "SLIDE_ExitTransition");
+		loop;
+
+	StoppedSliding:
+		TNT1 A 0 {
+         //invoker.displayNumber--;
+			A_Playsound("impact/slideend", CHAN_6, 0.6);
+			A_TakeInventory("StopSliding", 1);
+			A_TakeInventory("SlidingIsActive", 1);
+			A_TakeInventory("PlayerSlides", 1);
+			SetWeaponState("SLIDE_ExitTransition");
+		}
+
+	SLIDE_ExitTransition:
+		TNT1 A 1 {
+			A_StopSound(CHAN_5);
+			X_SetOverlaySprite(1, invoker.SlidingSprite, invoker.slideFrame);
+			S_ZOOMFACTOR(invoker.slideZoom);
+			invoker.slideTransition--;
+			if(getCvar("fov") < 120) {
+				invoker.slideZoom = invoker.slidezoom + 0.015;
+			}
+			if(invoker.slideTransition % 2 == 0) {
+				invoker.slideFrame--;
+			}
+			if(invoker.slideFrame == 0) {
+				invoker.slideTransition = 0;
+				invoker.SlideFrame = 0;
+				invoker.SlideZoom = 1.00;
+				SetWeaponState("Ready");
+			}
+		}
+		loop;
+//====================GRENADES=====================//
+
+	ThrowGrenade:
+		TNT1 A 0 A_GiveInventory("CancelAnimation", 1);
+		TNT1 A 0 A_JumpIfInventory("HandGrenadeAmmo", 1, 1);
+		Goto NoGrenade;
+		TNT1 A 0 A_ClearOverlays(2, 3);
+		TNT1 A 0 A_ZoomFactor(1.0);
+		TNT1 A 0 setZoomStatus(false);
+		TNT1 A 0 A_overlay(PSP_OFFHAND, "ThrowGrenadeAnimation");
+		BASB BBBFFFGGGGGGGGGGGGGGGGFF 1;
+		TNT1 A 0 
+		{
+			if(countinv("HandGrenadeAmmo") == 0) {
+				SetWeaponState("SwitchEquipment");
+			}
+			SetWeaponState("HandRemovedGrenadeToss");
+			return;
+		}
+		Goto HandRemovedGrenadeToss;
+		
+	ThrowMine:
+		TNT1 A 0 
+		{
+			if(countinv("MineAmmo") == 0) {
+				SetWeaponState("NoGrenade");
+			}
+		}
+		TNT1 A 0 A_ClearOverlays(2, 3);
+		TNT1 A 0 A_ZoomFactor(1.0);
+		TNT1 A 0 A_TakeInventory("UseGadget", 1);
+		TNT1 A 0 A_JumpIfInventory("MineAmmo", 1, 1);
+		NULL A 0 A_PlaySound("StunGrenadeArm", 2);
+		TNT1 A 0 setZoomStatus(false);
+		TNT1 A 0 A_overlay(PSP_OFFHAND, "ThrowMineAnimation");
+		BASB BBBFFFGGGGGGGGGGGGGGGGFF 1;
+		TNT1 A 0
+		{
+			SetWeaponState("HandRemovedGrenadeToss");
+			return;
+		}
+		goto HandRemovedGrenadeToss;	
+			
+	ThrowIceGrenade:
+		TNT1 A 0 
+		{
+			if(countinv("IceGrenadeAmmo") == 0) {
+				SetWeaponState("NoGrenade");
+			}
+		}
+		TNT1 A 0 A_GiveInventory("CancelAnimation", 1);
+		TNT1 A 0 A_ZoomFactor(1.0);
+		TNT1 A 0 A_JumpIfInventory("IceGrenadeAmmo", 1, 1);
+		Goto NoIceGrenade;
+		TNT1 A 0 A_ClearOverlays(2, 3);
+		TNT1 A 0 setZoomStatus(false);
+		TNT1 A 0 A_overlay(PSP_OFFHAND, "ThrowIceGrenadeAnimation");
+		TNT1 A 0
+		{
+			SetWeaponState("HandRemovedGrenadeToss");
+			return;
+		}
+		Goto HandRemovedGrenadeToss;
+		
+//=============================pushing button================================//
+		
+	PushButton:
+		TNT1 A 0 {invoker.Nogrenadewhileballin = true;}
+		TNT1 A 0 A_TakeInventory("PushButtonNow", 1);
+		TNT1 A 0 
+		{
+			invoker.isZooming = false;
+			if (getCvar("g_interactionanimations") == 1) {
+				SetWeaponState("PushButtonAnimationbball");
+			}
+		}
+		goto Ready;
+		
+	PushButtonAnimationbball:	
+		TNT1 A 0;
+		TNT1 A 0 
+		{
+			ACS_NamedExecute("RemoveHand", 0);
+			invoker.isPushingButton = true;
+		}
+		TNT1 A 10;
+		HND2 CCDDEE 1 A_JumpIfInventory("CancelAnimation", 1, "CancelAnimatonProcess");
+		HND2 EEEE 1 A_JumpIfInventory("CancelAnimation", 1, "CancelAnimatonProcess");
+		TNT1 A 0 
+		{
+			invoker.isPushingButton = false;
+		}
+		HND2 CCBBAA 1 A_JumpIfInventory("CancelAnimation", 1, "CancelAnimatonProcess");
+		TNT1 A 0 
+		{
+			A_TakeInventory("PushButtonNow", 1);
+		}
+		TNT1 A 0 ACS_NamedExecute("AddHand", 0);
+		TNT1 A 0 {invoker.Nogrenadewhileballin = false;}
+		goto Ready;
+		
+	gotoShowpass:
+		TNT1 A 0 SetWeaponState("showpassAnimationbball");
+		Goto Ready;
+
+	showpassAnimationbball:
+		TNT1 A 0;
+		TNT1 A 0
+		{
+			A_TakeInventory("Showpass", 1);
+		}
+		TNT1 A 0 ACS_NamedExecute("RemoveHand", 0);
+		BASB B 14;
+		BASB BBBBB 2 A_JumpIfInventory("CancelAnimation", 1, "Ready");
+		BASB B 25 A_JumpIfInventory("CancelAnimation", 1, "Ready");
+		BASB BBBBB 2 A_JumpIfInventory("CancelAnimation", 1, "Ready");
+
+		TNT1 A 0 ACS_NamedExecute("AddHand", 0);
+		goto Ready;
+		
+	ScanLight:
+		TNT1 A 0 {invoker.Nogrenadewhileballin = true;}
+		TNT1 A 0 SetWeaponState("Scanlightreadyupprep");
+		Goto Ready;
+		
+	Scanlightreadyupprep:
+		B111 CCEE 1;
+		
+	ScanlightreadyupBBALL:
+		TNT1 A 0 A_ZoomFactor(1.0);
+		TNT1 A 0;
+		TNT1 A 0 
+		{
+			let player = player;
+			let d = Dawn(player.mo);
+			d.blockMovement = true;
+		}
+		TNT1 A 0 ACS_NamedExecute("RemoveHandNoCancel", 1);
+		TNT1 A 0 A_TakeInventory("ScanLightPanelPressed", 1);
+//		TNT1 A 0 A_overlay(15, "ScanLightAnimation");
+//		Goto Scanlightreadyupprep;
+
+	ScanLightAnimation:
+		TNT1 A 13;
+//		RABA AAAAB 2;
+		DAHS ABCDEFGH 0;	
+		DAHS ABCDEFGH 2;	
+		DAHS H 30;
+/*		DAHS H 0 {
+			 A_overlay(15, "ScanLightAnimationLooper");
+		}*/
+//		Goto ready;
+
+	ScanLightAnimationLooper:
+		TNT1 A 0;
+		DAHS H 30;
+/*		DAHS H 1 {
+			if(countinv("RemoveHandNoCancel") == 0)
+			{
+				A_overlay(15, "ScanLightAnimationRemover");
+			}
+		}*/
+//		loop;
+	ScanLightAnimationRemover:
+		TNT1 A 0 
+		{
+			let player = player;
+			let d = Dawn(player.mo);
+			d.blockMovement = false;
+		}
+		DAHS GFEDCBA 2;
+		TNT1 A 0 ACS_NamedExecute("AddHand", 0);
+		TNT1 A 7;
+		TNT1 A 0 
+		{
+			invoker.noAnimationCancel = false;
+		}
+		
+	ScanlightretrunBBALL:
+		B111 EECC 1;
+		goto Ready;
+	
+//=====================SHIELDING EYES AND MISC=====================//
+
+	doShieldEyes:
+		BASB B 0 A_ZoomFactor(1.0);
+		BASB B 0 
+		{
+			if(health > 0) {
+				SetWeaponState("ShieldEyesAnimationbball");
+			}
+		}
+		Goto Ready;
+		
+	ShieldEyesAnimationbball:
+		TNT1 A 0 A_TakeInventory("ShieldEyes", 1);
+		TNT1 A 0 A_PlaySound("dawn/startle", CHAN_6);
+		TNT1 A 0 ACS_NamedExecute("RemoveHandFast", 0);
+		BASB B 6;
+		BASB BBBBB 1 
+		{
+			s_WeaponOffset(frandom(-2,2), frandom(-2,2));
+			A_OverlayOffset(PSP_OFFHAND, frandom(-2,2), frandom(-2,2), WOF_INTERPOLATE );
+			A_JumpIfInventory("CancelAnimation", 1, "CancelAnimatonProcess");
+		}
+		BASB BBBBBBBBBBBBBBBBBBBBBBBBBBBBB 1 
+		{
+			s_WeaponOffset(frandom(-2,2), frandom(-2,2));
+			A_OverlayOffset(PSP_OFFHAND, frandom(-2,2), frandom(-2,2), WOF_INTERPOLATE );
+			A_JumpIfInventory("CancelAnimation", 1, "CancelAnimatonProcess");
+		}
+		BASB BBBB 1 
+		{
+			s_WeaponOffset(frandom(-2,2), frandom(-2,2));
+			A_OverlayOffset(PSP_OFFHAND, frandom(-2,2), frandom(-2,2), WOF_INTERPOLATE );
+			A_JumpIfInventory("CancelAnimation", 1, "CancelAnimatonProcess");
+		}
+		TNT1 A 0 ACS_NamedExecute("AddHand", 0);
+		goto Ready;
+
+//======================KICKING=================================//		
+		
+	Kick:
+//		TNT1 A 0 checkPlayerStates();
+		TNT1 A 0 {invoker.Nogrenadewhileballin = true;}
+		TNT1 A 0 A_ZoomFactor(1.0);
+		TNT1 A 0 A_TakeInventory("PushButtonNow", 1);
+		TNT1 A 0 
+		{
+			invoker.isZooming = false;
+			if (getCvar("g_interactionanimations") == 1) {
+				A_overlay(PSP_LEGS, "KickAnimation");
+			}
+		}
+		goto KickAnimationbballin;
+	
+	KickFast:
+		TNT1 A 0 {invoker.Nogrenadewhileballin = true;}
+		TNT1 A 0 A_ZoomFactor(1.0);
+		TNT1 A 0 A_TakeInventory("PushButtonNow", 1);
+		TNT1 A 0 
+		{
+			ACS_NamedExecute("RemoveHand", 0);
+			invoker.isZooming = false;
+			if (getCvar("g_interactionanimations") == 1) {
+				A_overlay(PSP_LEGS, "KickAnimationFast");
+			}
+		}
+		goto KickAnimationFast;
+	
+	KickAnimationbballin:	
+		TNT1 A 0;
+//		TNT1 A 0 A_Print("mekickingdoor");
+		TNT1 A 0 
+		{
+//			ACS_NamedExecute("RemoveHand", 0);
+			invoker.isPushingButton = true;
+			let player = player;
+			let d = Dawn(player.mo);
+			d.blockMovement = true;
+			A_PLAYSOUND("DAWN/KICK", CHAN_AUTO, 1.0, 0, 0);
+		}
+		B111 A 11;
+		B111 BBBCC 1;
+		B111 DEEE 1;
+		B111 A 0 
+		{
+			A_PlaySound("weapons/fistmelee", CHAN_AUTO, pitch:frandom(0.7,0.75));
+			if(getCvar("g_Screenshake") >= 1) {
+				A_QuakeEx(1, 1, 1, 10, 0, 700, 0, 0, 0, 0, 0, 0, 2, 2, 4);
+			}
+			A_ZOOMFACTOR(0.81, ZOOM_INSTANT);
+		}
+		B111 DDDD 1;
+		B111 DDD 1 A_SETANGLE(angle+2.4);
+		B111 DD 1 
+		{
+			A_SETANGLE(angle-1.6);
+			A_ZOOMFACTOR(1.0);
+		}
+		B111 CCCCBBBBAAAA 1
+		{
+			A_ZOOMFACTOR(1.0);
+		}
+		TNT1 A 0
+		{
+			let player = player;
+			let d = Dawn(player.mo);
+			d.blockMovement = false;
+			A_TakeInventory("DawnKick", 1);
+		}
+//		TNT1 A 0 ACS_NamedExecute("AddHand", 0);
+		TNT1 A 0;
+		goto ready;
+
+	// Oh my god this one does damage!
+	KickAnimationFast:	
+		TNT1 A 0;
+//		TNT1 A 0 A_Print("mekickingdoor animationfast");
+		TNT1 A 0
+		{
+			A_PLAYSOUND("dawn/targetedmelee", CHAN_AUTO, 0.7, 0, 0);
+		}
+		DAWK ABCE 1;
+		DAWK FGI 1;
+		DAWK A 0 
+		{
+			A_PlaySound("weapons/fistmelee", CHAN_AUTO, pitch:frandom(0.7,0.75));
+			if(getCvar("g_Screenshake") >= 1) {
+				A_QuakeEx(1, 1, 1, 10, 0, 700, 0, 0, 0, 0, 0, 0, 2, 2, 4);
+			}
+			A_ZOOMFACTOR(0.91, ZOOM_INSTANT);
+		}
+		DAWK IIJJK 1;
+		DAWK KLM 1;
+		DAWK MM 1 
+		{
+			A_ZOOMFACTOR(1.0);
+		}
+		DAWK NOPPQQ 1
+		{
+			A_ZOOMFACTOR(1.0);
+		}
+		TNT1 A 0
+		{
+//			ACS_NamedExecute("AddHand", 0);
+		}
+		DAWK RRSSTT 1
+		{
+			A_ZOOMFACTOR(1.0);
+		}
+		TNT1 A 0
+		{
+			A_TakeInventory("DawnKickFast", 1);
+		}
+		TNT1 A 0;
+		stop;
+	}
+
+	// If the player has the BasketballReboundCatch token any time they
+	// shouldn't, remove it.
+	
+	override void Tick()
+	{
+		if (owner && owner.FindInventory("DawnballinReboundCatch") && lookingforrebound == false)
+		{
+			owner.A_TakeInventory("DawnballinReboundCatch",1);
+		}
+		
+		Super.Tick();
+	}
+	
+	override void OwnerDied ()
+	{
+		if(owner != null)
+		{
+			// Owner is dead, so stop whatever sound that's playing on the "body" channel.
+			owner.A_SpawnItemEx("DawnballinProjectile",0,0,height*(4./7.),20*cos(pitch));
+		}
+	
+		Super.OwnerDied();
+	}
+
+}
+
+// Abandon hope, all ye who enter the DawnballinProjectile section!
+
+// During the Early Excess period for Reelism 2, the Basketball was extremely
+// prone to crashing. This was probably the most frequent piece of feedback
+// that we received. We tried many, many, many times to fix it, and for that reason,
+// I must tell you the story of what happened.
+
+// The Basketball was originally split between two objects: a projectile actor,
+// which handled the collisions with monsters and geometry, and a WeaponGiver actor
+// with a larger radius, which is what the player picked up and made the ball easier
+// to grab in the air. This configuration ran into an issue where, randomly, GZDoom
+// would crash immediately after the ball was thrown or dunked. The problem stuck
+// around for months, even persisting into the first public release of Reelism 2,
+// much to our frustration.
+
+// As far as we can tell, the underlying problem was related to how the two
+// Basketball actors would need to constantly reference each other. If one actor
+// was removed from play in the middle of the other actor's script, there was
+// a chance that GZDoom would crash by trying to reference the properties of
+// an object that didn't exist anymore. We could never get the two actors
+// in sync, no matter how many safeguards we added.
+
+// The obvious solution to this problem was to combine the two Basketball objects
+// into one actor, which is what you'll see below. However, I was reluctant to
+// do this at first, because we would lose the expanded WeaponGiver hitbox.
+// The Basketball is a pretty small object, so I was hestitant to cut that feature.
+
+// I started to implement the trimmed-down version of the Basketball on
+// the evening of December 2, 2020 when the solution dawned on me:
+// We could still use a hitbox actor, as long as it did NOTHING.
+
+// The revised hitbox actor used by the Basketball is almost totally inert. All it does
+// is call the basketball's Touch function and disappear when the basketball disappears.
+// It has no load-bearing functionality, and the basketball still works
+// perfectly well if the extra hitbox is missing. This is the best of both worlds:
+// all the functionality is rolled into a single actor, while the hitbox actor is
+// basically just a physical extension of the Basketball's Touch function.
+
+// This bug hounded us for nearly a whole year (introduced April 17, 2020;
+// earliest attempt to fix on May 7; solved on December 2). The crash proved to be
+// impossible to reproduce consistently, and we had nearly given up trying to fix it.
+// The last note I left on our Trello about it was:
+
+	// "Stopping in to report that it's still not fixed, exact same bug, and I'm out of ideas."
+
+// It is entirely possible, as I'm writing this, that I've introduced
+// a new terrible bug that people will discover once this is out in the wild.
+// But as far as I'm concerned, the original bug is, finally, dead.
+
+// RIP Basketball Bug
+// It's been real, motherfucker.
+
+// ---------
+
+// The Basketball projectile is a WeaponGiver because that gives us better
+// control of the points that are given. We'll give the player 200 points
+// for a rebound, less than picking up a new item but still a nice amount.
+
+class DawnballinProjectile : WeaponGiver
+{
+	private int throwableFlags;	
+
+	int damageToGlass;
+	float glassDamping;
+	
+	property DamageToGlass 	: damageToGlass;		// Damage caused when passing through or colliding with glass
+	property GlassDamping	: glassDamping;	
+	
+	Default
+	{
+		Radius 12;
+		Height 24;
+		Speed 20;
+		Damage 0;
+		Mass 15;
+		Projectile;
+		-NOGRAVITY
+		-NOBLOCKMAP
+		+NOEXTREMEDEATH
+		+MTHRUSPECIES
+		+BOUNCEONFLOORS
+		+BOUNCEONWALLS
+		+BOUNCEONCEILINGS
+		+ALLOWBOUNCEONACTORS
+		+BOUNCEONACTORS
+		+USEBOUNCESTATE
+		+ROLLSPRITE
+		+ROLLCENTER
+		+CANBOUNCEWATER
+		DamageType "Melee";
+		BounceFactor 0.8;
+		BounceCount 10;
+		BounceSound "weapons/sports/bball/bounce";
+		ProjectileKickBack 50;
+		Scale 0.3;
+		+FORCEXYBILLBOARD
+		Inventory.PickupSound "weapons/sports/bball/rebound";
+		Inventory.PickupMessage "$GOTBBALLREBOUND";
+		DropItem "Dawnballin";
+		
+		DawnballinProjectile.DropBall "DawnballinDropped";
+		DawnballinProjectile.PointsToGive 200;
+		+INVENTORY.ALWAYSPICKUP
+	}
+	
+	int PointsToGive;
+	Property PointsToGive : PointsToGive;
+	
+	string DropBall;
+	property DropBall : DropBall;
+	
+	actor collider;
+	int countup;
+	bool okaypickup;
+	bool firstbounce;
+	
+	// The basketball projectile summons an additional hitbox actor that
+	// allows the player to pick up the ball from a further distance than
+	// the normal hitbox. This makes it easier for the player to grab rebounds.
+	// The collider actor does nothing besides call the Touch function from the
+	// basketball projectile and disappear when there's no projectile anymore.
+	
+	override void PostBeginPlay()
+	{
+		Super.PostBeginPlay();
+		collider = Spawn("DawnballinPickupCollider",self.pos-(0,0,8));
+		if (collider)
+		{
+			collider.master = self;
+		}
+	}
+	
+	override int SpecialMissileHit (Actor victim) {
+
+        if(victim is "SelacoActor") {
+            victim.A_CHANGEVELOCITY(-20,0,8, CVF_RELATIVE);
+			victim.DamageMobj(self, target, random(80,150), "meleeimpact", DMG_NO_PROTECT | DMG_NO_ARMOR | DMG_NO_FACTOR);
+        }
+		
+
+        if((victim is "Juggernaut") || (victim is "SentryGun") || (victim is "SentryGunAlien")) {
+            victim.A_CHANGEVELOCITY(-20,0,8, CVF_RELATIVE);
+			victim.DamageMobj(self, target, random(80,150), "explosiveimpact", DMG_NO_PROTECT | DMG_NO_ARMOR | DMG_NO_FACTOR);
+        }
+		
+
+        if(victim is "SelacoExplosivebarrel") {
+            victim.A_CHANGEVELOCITY(-5,0,2, CVF_RELATIVE);
+			victim.DamageMobj(self, target, 100, "explosiveimpact", DMG_NO_PROTECT | DMG_NO_ARMOR | DMG_NO_FACTOR);
+        }
+		
+		if((victim is "CRAWLERMINE") || (victim is "SAWDRONE")) {
+			victim.A_CHANGEVELOCITY(-20,0,8, CVF_RELATIVE);
+			victim.DamageMobj(self, target, 200, "explosiveimpact", DMG_NO_PROTECT | DMG_NO_ARMOR | DMG_NO_FACTOR);
+        }
+
+        return super.SpecialMissileHit(victim);
+    }
+	
+	States
+	{
+	Spawn:
+		TNT1 A 0;
+		TNT1 A 0
+		{
+			ThrustThingZ(0,20,0,1);
+		}
+		Goto Active;
+	Active:
+		BASB A 1
+		{
+			A_SetRoll(roll + (abs(self.vel.x) + abs(self.vel.y)));
+		}
+		Loop;
+	Bounce:
+		TNT1 A 0
+		{
+			// Comedy physics: exaggerate the first bounce.
+			// Then, be gone with the bounce state.
+			
+			if (invoker.firstbounce == false)
+			{
+				ThrustThingZ(0,(abs(self.vel.z*2)),0,1);
+				invoker.firstbounce = true;
+			}
+			bUSEBOUNCESTATE = false;
+		}
+		goto Active;
+	Bounce.Floor:
+		TNT1 A 0
+		{
+			// Don't disable the bounce state when the ball hits the floor.
+			// This is to prevent the player from immediately grabbing
+			// the ball if they throw it straight down.
+			// We also still want to allow the Bounce state so that
+			// the player can grab the ball early if it its a WALL,
+			// rather than a floor.
+			// We use the firstbounce flag to track whether we've done the
+			// initial comedy physics bounce.
+			
+			if (invoker.firstbounce == false)
+			{
+				ThrustThingZ(0,(abs(self.vel.z*2)),0,1);
+				invoker.firstbounce = true;
+			}
+		}
+		goto Active;	
+	Death:
+		TNT1 A 0 //A_SpawnItemEx("DawnballinDropped");
+		{
+			// pass our current roll over to the dropped pickup
+			actor ball = Actor.Spawn(invoker.DropBall,self.pos);
+			ball.roll = self.roll;
+		}
+		Stop;
+	}
+	
+	// Don't let the player grab their own ball right away.
+	// We're overriding the Touch function to prevent any pickup
+	// activity by the firing player during the first few tics.
+	
+	// This should still allow other players to grab the ball,
+	// even during the first tics? I haven't tested this,
+	// so I'm not 100% sure.
+	
+	override void Touch(Actor toucher)
+	{	
+		if (target && (toucher != target || okaypickup == true) && (toucher is 'dawn'))
+		{
+			toucher.A_SelectWeapon("Dawnballin");
+			
+			Super.Touch(toucher);
+		}
+	}
+	
+	// Since we'll always pick up this item regardless,
+	// we'll give the points and ReboundCatch item without
+	// the need for pickup.
+	// Disabling bDROPPED prevents this WeaponGiver from
+	// automatically giving us full points.
+	override bool TryPickup (in out Actor toucher)
+	{
+		bDROPPED = false;
+		
+		//toucher.A_GiveInventory("Splot_ScoreItem", PointsToGive);
+		toucher.A_GiveInventory("DawnballinReboundCatch", 1);
+		toucher.A_SelectWeapon("Dawnballin");
+		bool pickup = Super.TryPickup(toucher);
+		return pickup;	
+	}
+	
+	override void Tick()
+	{
+		Super.Tick();
+		
+		// Start counting up once the ball is active. This will buy some time
+		// for the ball to get away from the player before we let them grab it.
+		// If the ball projectile has bounced, make it okay to pick up too.
+		// That way, we can grab it if it comes back to us right after hitting
+		// a wall or monster.
+		
+		if (okaypickup == false)
+		{
+			countup++;
+			if (countup == 10 || !bUSEBOUNCESTATE)
+			{
+				okaypickup = true;
+			}
+		}
+			
+		if (collider)	// If we have a collider, move it along with the ball.
+		{
+			collider.SetOrigin(self.pos-(0,0,8),true);
+		}
+		else			// If we don't have a collider, make one!
+		{
+			collider = Spawn("DawnballinPickupCollider",self.pos-(0,0,8));
+			if (collider)
+			{
+				collider.master = self;
+			}
+		}
+	}
+}
+
+class DawnballinPickupCollider : Inventory
+{
+	Default
+	{
+		Radius 20;
+		Height 40;
+		+NOGRAVITY
+		+DONTSPLASH
+		+DONTBLAST
+		+NOCLIP
+		+NOFEAR
+		//Debug properties for visualizing the collider
+		//Scale 0.5;
+		//Alpha 0.5;
+		//RenderStyle "Translucent";
+	}
+
+	// If we touch the player, act like the Basketball touched the player.
+	override void Touch(Actor toucher)
+	{	
+		if (master && toucher is 'dawn')
+		{
+			
+			master.Touch(toucher);
+		}
+	}
+	
+	override void Tick()
+	{
+		Super.Tick();
+		
+		// If there's no Basketball, remove the hitbox actor.
+		if (!master)
+		{
+			self.destroy();
+		}
+	}
+	
+	//Debug graphics for visualizing the collider
+	/*States
+	{
+	Spawn:
+		BASB A -1;
+		Loop;
+	}*/
+}
+
+// When the basketball projectile stops, spawn a WeaponGiver that
+// gives us the Dawnballin weapon.
+// This lets us tell when the player picks up a missed rebound.
+// We'll give them fewer points for this.
+
+class DawnballinDropped : WeaponGiver
+{
+	int PointsToGive;
+	Property PointsToGive : PointsToGive;
+
+	Default
+	{
+		Inventory.PickupSound "weapons/misc/w_pkup";
+		Inventory.PickupMessage "$GOTBBALLAGAIN";
+		DropItem "Dawnballin";
+		+INVENTORY.ALWAYSPICKUP
+		+FORCEXYBILLBOARD
+		+ROLLSPRITE
+		+ROLLCENTER
+		-NOGRAVITY
+		Scale 0.3;
+		DawnballinDropped.PointsToGive 50;
+	}
+	
+	States
+	{
+	Spawn:
+		// Keep the ball around for 20 seconds
+		BASB A 35; //700;
+		//BASB AAAAAAAAAAAAAAAAAAAA 1 A_SetScale(scale.x*0.9);
+		//Stop;
+		Loop;
+	}
+	
+	// Since we'll always pick up this item regardless,
+	// we'll give the points and ReboundCatch item without
+	// the need for pickup.
+	// Disabling bDROPPED prevents this WeaponGiver from
+	// automatically giving us full points.
+	// We'll still give the ReboundCatch item in case there's
+	// either some extreme circumstances or in case the player
+	// picks up a random discarded ball while the throw animation
+	// is playing.
+	override bool TryPickup (in out Actor toucher)
+	{
+		bDROPPED = false;
+	
+		//toucher.A_GiveInventory("Splot_ScoreItem", PointsToGive);	
+		toucher.A_GiveInventory("Dawnballindroppedpickup", 1);
+
+		if (toucher is "selacoenemy")
+			{
+			toucher.A_SpawnItemEx("bballmarker", 0,0,0,0,0,0,0, SXF_SETMASTER);
+			}
+
+		bool pickup = Super.TryPickup(toucher);
+		return pickup;
+		
+	}
+}
+
+// Inventory token for handling rebounds. See Dawnballin
+
+class Dawnballindroppedpickup : CustomInventory
+{
+	Default
+	{
+		+INVENTORY.ALWAYSPICKUP
+		-INVENTORY.INVBAR
+		Inventory.MaxAmount 1;
+	}
+	
+	States
+	{
+	Use:
+		TNT1 A 0;
+		Fail;
+	Pickup:
+		TNT1 A 0 { return true; }
+	Spawn:
+		TNT1 A -1;
+		Stop;
+	}
+}
+
+class DawnballinReboundCatch : CustomInventory
+{
+	Default
+	{
+		+INVENTORY.ALWAYSPICKUP
+		-INVENTORY.INVBAR
+		Inventory.MaxAmount 1;
+	}
+	
+	States
+	{
+	Use:
+		TNT1 A 0;
+		Fail;
+	Pickup:
+		TNT1 A 0 A_GiveInventory("BunnyHopDuration", 100);
+		TNT1 A 0 { return true; }
+	Spawn:
+		TNT1 A -1;
+		Stop;
+	}
+}
+
+class Splot_DunkHotspot : Actor
+{
+	Default
+	{
+		Radius 1;
+		Height 1;
+		+NOGRAVITY
+		+NOCLIP
+		+NOBLOCKMAP
+		+DONTSPLASH
+	}
+	
+	States
+	{
+	Spawn:
+		TNT1 A 0;
+		TNT1 A 0
+		{
+			A_Explode(175,80,0,0,64,0,0,"","Extreme");
+			bNOEXTREMEDEATH = true;
+			A_Explode(75,180,0,0,80);
+			A_SpawnItemEx("Splot_Shockwave");
+			
+			for (int i; i < 6; i++)
+			{
+				A_SpawnItemEx("Splot_Debris",random(-64,64),random(-64,64),8,0,random(0,3),random(5,9),random(0,360));
+			}
+			
+			for (int i; i < 24; i++)
+			{
+				A_SpawnItemEx("Splot_DebrisTiny",random(-64,64),random(-64,64),8,0,random(0,3),random(3,7),random(0,360));
+			}
+			
+			// A_DunkDown is a custom script that slams down airborne enemies
+			// in the dunk zone. We call A_DunkDown after the explosion so
+			// the enemies don't get launched upwards with the other riff-raff.
+		
+			A_DunkDown();
+		}
+		Stop;
+	}
+	
+	// This script is based on A_Blast, but with a modification to look
+	// for the edge of a monster's collision radius rather than the center.
+	// This improves the dunk slamdown consistency on large enemies.
+	
+	action void A_DunkDown()
+	{
+		ThinkerIterator it = ThinkerIterator.Create("Actor");
+		Actor mo;
+		while ( (mo = Actor(it.Next ())) )
+		{
+			if (mo == self || mo.bBoss || mo.bDormant || mo.bMissile)
+			{
+				continue;
+			}
+			if (mo.bIceCorpse || mo.bCanBlast)
+			{
+				// it's okay
+			}
+			else if (!mo.player && !mo.bIsMonster && !mo.bCanBlast && !mo.bVulnerable)
+			{
+				continue;
+			}
+			if (Distance2D(mo) > (80+mo.radius)) // dunk slamdown from edge of monster radius
+			{
+				continue;
+			}
+			if (mo.CurSector.PortalGroup != CurSector.PortalGroup && !CheckSight(mo))
+			{
+				// in another region and cannot be seen.
+				continue;
+			}
+			if (mo.pos.z <= GetZAt(mo.pos.x,mo.pos.y))
+			{
+				continue;
+			}
+			mo.Vel.Z = -20;
+		}
+	}
+}
+
+class Splot_DunkSuperHotspot : Splot_DunkHotspot
+{
+	States
+	{
+	Spawn:
+		TNT1 A 0;
+		TNT1 A 0
+		{
+			A_Explode(500,150,0,0,80,0,0,"","Extreme");
+			A_Explode(250,300,0,0,128);
+			A_SpawnItemEx("Splot_DunkShockwaveSuper");
+			
+			for (int i; i < 18; i++)
+			{
+				A_SpawnItemEx("Splot_Debris",random(-128,128),random(-128,128),8,0,random(0,3),random(5,18),random(0,360));
+			}
+			
+			for (int i; i < 40; i++)
+			{
+				A_SpawnItemEx("Splot_DebrisTiny",random(-128,128),random(-128,128),8,0,random(0,3),random(3,14),random(0,360));
+			}
+			
+			A_DunkDown();
+		}
+		Stop;
+	}
+}
+
+class Splot_Shockwave : Actor
+{
+	Default
+	{
+	radius 10;
+	height 10;
+	+NOCLIP
+	+FLATSPRITE
+	+NOGRAVITY
+	+NOBLOCKMAP
+	+ROLLCENTER
+	+DONTSPLASH
+	+DONTBLAST
+	Renderstyle "Add";
+	}
+	
+	states
+	{
+	Spawn:
+		SHOK E 0;
+		"####" # 0;
+	Prep:
+		"####" # 0
+		{
+			angle = random(0,360);
+		}
+		//SHOK A 0 A_SetRoll (random(0,360))
+		//#### # 0 A_SetPitch(-32,32); //A_SetPitch(random(45,128)) // A_SetPitch(90)
+	DoTheThing:
+		"####" # 1
+		{
+			A_FadeOut(0.05);
+			A_SetScale(scale.X + 0.1);
+		}
+		loop;
+	}
+}
+
+class Splot_Debris : Actor
+{
+    Default
+	{
+		Radius 1;
+		Height 1;
+		Speed 5;
+		Projectile;
+		-NOGRAVITY
+		-SOLID
+		+MOVEWITHSECTOR
+		+CLIENTSIDEONLY
+		+NOBLOCKMAP
+		+NOTELEPORT
+		+FORCEXYBILLBOARD
+		Gravity 0.65;
+		//scale 0.5;
+	}
+	
+	States
+	{
+	Spawn:
+		DEBS A 0;
+		DEBS A 0
+		{
+			bSPRITEFLIP = random(0,1);
+		}
+		DEBS A 0 A_Jump(256, "Speen1", "Speen2", "Speen3", "Speen4");
+	Speen1:
+		DEBS AB 5;
+	Speen2:
+		DEBS CD 5;
+	Speen3:
+		DEBS EF 5;
+	Speen4:
+		DEBS GH 5;
+		goto Speen1;
+	Death:
+		TNT1 A 0;
+		stop;
+	}
+	
+	override void Tick()
+	{
+		if (waterlevel > 0)
+		{
+			ThrustThingZ(0,4,1,1);
+		}
+		
+		Super.Tick();
+	}
+}
+
+class Splot_DebrisTiny : Splot_Debris
+{
+    Default
+	{
+		Gravity 0.4;
+		scale 0.25;
+	}
+}
+
+class Splot_DunkShockwaveSuper : Splot_Shockwave
+{
+	Default
+	{
+		Scale 3;
+	}
+	
+	States
+	{
+	Spawn:
+		SHOK E 0;
+		"####" # 0;
+	Prep:
+		"####" # 0
+		{
+			angle = random(0,360);
+		}
+	DoTheThing:
+		"####" # 1
+		{
+			A_FadeOut(0.04);
+			A_SetScale(scale.X + 0.125);
+		}
+		loop;
+	}
+}
+
+Class bballmarker : Actor
+{
+	Default
+	{
+		Radius 10;
+		Height 60;
+		//  +SOLID;
+		//  +SHOOTABLE;
+		//  +INVULNERABLE;
+		+BRIGHT;
+		+floatbob
+		scale 0.2; 
+	}
+	States
+	{
+	Spawn:
+		BASB A 1
+		{
+		A_Warp(AAPTR_MASTER, 0, 0, 65, 0, WARPF_ABSOLUTEANGLE | WARPF_NOCHECKPOSITION | WARPF_INTERPOLATE | WARPF_COPYVELOCITY);
+		
+		if (master is "selacoenemy" && master.health <=5)
+			{
+				Destroy();
+			}
+		}
+		
+		TNT1 A 0
+		{
+		if (!master)
+			{
+				Destroy();
+			}
+		}
+		Loop;
+	}
+}

@@ -1,0 +1,46 @@
+version 4.11
+
+#include "actors/Dawnballin"
+#include "actors/weapons/CROSSHAIR/Ballincrosshair.zsc"
+
+class BBallSpawner : StaticEventHandler //thanks again Soliddew!
+{
+    override void WorldLoaded(worldEvent e)
+    {
+        if(level.info.mapname == "SE_01B")
+        {
+            foreach(actor bball : thinkerIterator.Create("DAWNBALLINpickup"))
+            {
+                return;
+            }
+
+            foreach(actor bball : thinkerIterator.Create("DawnballinDropped"))
+            {
+                bball.destroy();
+            }
+
+            foreach(actor bball : thinkerIterator.Create("DawnballinProjectile"))
+            {
+                bball.Destroy();
+            }
+
+            foreach(plr : players)
+            {
+                if(plr && plr.mo && plr.mo.CountInv("Dawnballin"))
+                {
+                    return;
+                }
+            }
+
+            foreach(flaredPickup cricketpickup : thinkerIterator.Create("AmmoCricketMedium"))
+            {
+                if(cricketpickup.pos == (1140, -316, -206))
+                {
+                    cricketpickup.Cleanup();
+                    cricketpickup.Destroy();
+                }
+            }
+            Actor.Spawn("DAWNBALLINpickup", (1140, -316, -206));
+        }
+    }
+}

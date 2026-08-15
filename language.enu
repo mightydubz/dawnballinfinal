@@ -1,0 +1,35 @@
+/*
+================================================================================
+ Splot2 Definition Code
+ 
+ Author: The Kinsie
+ 
+ Purpose: Language strings for localization
+ 
+ Comment: 
+
+================================================================================
+*/
+
+[enu default]
+
+////////////////////////////////////////////////////////////////////////////////
+// Weapons Stuff
+////////////////////////////////////////////////////////////////////////////////
+
+// Weapon Pickups
+GOTBBALL = "The Sweetwater Regulation Basketball!";
+GOTBBALLREBOUND = "Caught the Rebound!";
+GOTBBALLAGAIN = "Retrieved your Basketball.";
+
+// Weapon Tags
+TAGBASKETBALL = "Basketball";
+
+// PDA Entry 31-21
+PDA_G_31_21  = "98";
+PDA_N_31_21   = "Funco";
+PDA_N2_31_21  = "Toys";
+PDA_S_31_21   = "Selaco Standard Regulation Basketball";
+PDA_PI_31_21  = "BSKTBALL";
+PDA_D_31_21   = "Information";
+PDA_E_31_21   = "DAWNBALL#-#\c I'M BALLIN, 40 IN MY HAND, BET THIS MOTHERFUCKER WON'T NBA JAM";

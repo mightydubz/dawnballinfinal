@@ -1,0 +1,8 @@
+weapons/sports/bball/select			"sounds/select.ogg"
+weapons/sports/bball/bounce			"sounds/bounce.ogg"
+weapons/sports/bball/rebound		"sounds/rebound.ogg"
+weapons/sports/bball/throw			"sounds/throw.ogg"
+weapons/sports/bball/dunkstart		"sounds/dunkstart.ogg"
+weapons/sports/bball/dunkslam		"sounds/slam.ogg"
+weapons/sports/bball/dunkslamsuper	"sounds/superslam.ogg"
+weapons/sports/bball/hardthrow	"sounds/HARDTHRO.wav"
