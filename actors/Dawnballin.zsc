@@ -43,7 +43,7 @@ class Dawnballin : SelacoWeapon //Splot_Weapon
 			int flags
 			)
 	{
-		if (inflictor.bMISSILE)
+		if (inflictor && inflictor.bMISSILE)
 			{
 				if (dunkshield)
 				{
