@@ -1,6 +1,6 @@
 version 4.11
 
-#include "actors/Dawnballin"
+#include "actors/Dawnballin.zsc"
 #include "actors/weapons/CROSSHAIR/Ballincrosshair.zsc"
 
 class BBallSpawner : StaticEventHandler //thanks again Soliddew!

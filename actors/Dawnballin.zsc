@@ -18,6 +18,7 @@ class DAWNBALLINpickup : weaponpickup {
 		WeaponPickup.WeaponName "Dawnballin";
 		WeaponPickup.WeaponGraphic "BBALCON1";
 		WeaponPickup.weaponID 3;
+		SelacoItem.pickupTag "$TAGBASKETBALL";
 		tag "Selaco Standard Regulation Basketball";
 		scale 0.3;
 	}
@@ -1095,7 +1096,7 @@ class Dawnballin : SelacoWeapon //Splot_Weapon
 // control of the points that are given. We'll give the player 200 points
 // for a rebound, less than picking up a new item but still a nice amount.
 
-class DawnballinProjectile : WeaponGiver
+class DawnballinProjectile : SelacoItem
 {
 	private int throwableFlags;	
 
@@ -1107,7 +1108,7 @@ class DawnballinProjectile : WeaponGiver
 	
 	Default
 	{
-		Radius 12;
+		Radius 18;
 		Height 24;
 		Speed 20;
 		Damage 0;
@@ -1136,7 +1137,13 @@ class DawnballinProjectile : WeaponGiver
 		Inventory.PickupSound "weapons/sports/bball/rebound";
 		Inventory.PickupMessage "$GOTBBALLREBOUND";
 		DropItem "Dawnballin";
-		
+		Tag "$ACT_GRAB";
+		+SelacoItem.preventSleep;
+		+SelacoItem.Essential;
+		-SelacoItem.SleepWhenFar;
+		-SelacoItem.AllowRandomizerSwapping;
+		+SelacoItem.AlwaysAllowTouchMode;
+		-SelacoItem.FlyAnimation;
 		DawnballinProjectile.DropBall "DawnballinDropped";
 		DawnballinProjectile.PointsToGive 200;
 		+INVENTORY.ALWAYSPICKUP
@@ -1291,16 +1298,19 @@ class DawnballinProjectile : WeaponGiver
 	
 	override void Touch(Actor toucher)
 	{	
-		if (healballactive == true && target && (toucher != target || okaypickup == true) && (toucher is 'dawn'))
+		//console.printf("Projectile Touch");
+		if (healballactive && target && (toucher != target || okaypickup) && (toucher is 'PlayerPawn'))
 		{
 			toucher.A_SelectWeapon("Dawnballin");
 			toucher.A_GiveInventory("SelacoArmor", 100);
 			Dawn(toucher).healPlayer(500);
+			//console.printf("Projectile Give Player Heal");
 			Super.Touch(toucher);
 		}
 		
-		if (target && (toucher != target || okaypickup == true) && (toucher is 'dawn'))
+		if (target && (toucher != target || okaypickup) && (toucher is 'PlayerPawn'))
 		{
+			//console.printf("Projectile Give Player");
 			toucher.A_SelectWeapon("Dawnballin");
 			Super.Touch(toucher);
 		}
@@ -1313,12 +1323,33 @@ class DawnballinProjectile : WeaponGiver
 	// automatically giving us full points.
 	override bool TryPickup (in out Actor toucher)
 	{
+		if(!(toucher is 'PlayerPawn') || !okaypickup)
+		{
+			//console.printf(" not player ");
+			return false;
+		}
+
 		bDROPPED = false;
 		
 		toucher.A_GiveInventory("DawnballinReboundCatch", 1);
+		toucher.A_GiveInventory("Dawnballin", 1);
 		toucher.A_SelectWeapon("Dawnballin");
-		bool pickup = Super.TryPickup(toucher);
-		return pickup;	
+	
+		//console.printf("Projectile Try pickup Go away and die");
+		goAwayAndDie();
+		return true;	
+	}
+	override bool Use(bool pickup)
+	{
+		//console.printf("Use projectile");
+
+		bool used = Super.Use(pickup);
+		if(used)
+		{
+			//console.printf("Use Go away and die");
+			goAwayAndDie();
+		}
+		return used;
 	}
 	
 	override void Tick()
@@ -1331,7 +1362,7 @@ class DawnballinProjectile : WeaponGiver
 		// That way, we can grab it if it comes back to us right after hitting
 		// a wall or monster.
 		
-		if (okaypickup == false)
+		if (!okaypickup)
 		{
 			countup++;
 			if (countup == 5 || !bUSEBOUNCESTATE)
@@ -1380,6 +1411,7 @@ class DawnballinPickupCollider : ThrowableActor
 		damageType "ExplosiveImpact";
 		ThrowableActor.DamageToGlass 99999;
 		ThrowableActor.GlassDamping 0.65;
+		SeeSound "";
 		//Debug properties for visualizing the collider
 //		Scale 0.5;
 //		Alpha 0.5;
@@ -1389,17 +1421,24 @@ class DawnballinPickupCollider : ThrowableActor
 	// If we touch the player, act like the Basketball touched the player.
 	override void Touch(Actor toucher)
 	{	
-		if (master && toucher is 'dawn')
+			//console.printf("Collider touch Something");
+
+		if (master && toucher is 'PlayerPawn')
 		{
-			
 			master.Touch(toucher);
 		}
+	}
+
+	override bool CanCollideWith(actor other, bool passive)
+	{
+		//console.printf("Collider CanCollideWith %d", level.maptime);
+		touch(other);
+		return super.CanCollideWith(other, passive);
 	}
 	
 	override void Tick()
 	{
 		Super.Tick();
-		
 		GlassHandler.GlassExplosion(self, 25, 100);
 		// If there's no Basketball, remove the hitbox actor.
 		if (!master)
@@ -1422,7 +1461,7 @@ class DawnballinPickupCollider : ThrowableActor
 // This lets us tell when the player picks up a missed rebound.
 // We'll give them fewer points for this.
 
-class DawnballinDropped : WeaponGiver
+class DawnballinDropped : SelacoItem
 {
 	int PointsToGive;
 	Property PointsToGive : PointsToGive;
@@ -1431,7 +1470,14 @@ class DawnballinDropped : WeaponGiver
 	{
 		Inventory.PickupSound "weapons/misc/w_pkup";
 		Inventory.PickupMessage "$GOTBBALLAGAIN";
-		DropItem "Dawnballin";
+		//DropItem "Dawnballin";
+		Tag "$TAGBASKETBALL";
+		+SelacoItem.preventSleep;
+		+SelacoItem.Essential;
+		-SelacoItem.SleepWhenFar;
+		-SelacoItem.AllowRandomizerSwapping;
+		+SelacoItem.AlwaysAllowTouchMode;
+		-SelacoItem.FlyAnimation;
 		+INVENTORY.ALWAYSPICKUP
 		+FORCEXYBILLBOARD
 		+ROLLSPRITE
@@ -1452,16 +1498,25 @@ class DawnballinDropped : WeaponGiver
 	override bool TryPickup (in out Actor toucher)
 	{
 		bDROPPED = false;
-	
-		toucher.A_GiveInventory("Dawnballindroppedpickup", 1);
+		//console.printf("try pickup dropped");
+		
+		If(toucher.CountInv("Dawnballin"))
+		{
+			return false;
+		}
 
+		
 		if (toucher is "selacoenemy")
-			{
+		{
 			toucher.A_SpawnItemEx("bballmarker", 0,0,0,0,0,0,0, SXF_SETMASTER);
-			}
+		}
 
-		bool pickup = Super.TryPickup(toucher);
-		return pickup;
+		toucher.A_GiveInventory("Dawnballindroppedpickup", 1);
+		toucher.A_GiveInventory("Dawnballin", 1);
+
+
+
+		return true;
 		
 	}
 }

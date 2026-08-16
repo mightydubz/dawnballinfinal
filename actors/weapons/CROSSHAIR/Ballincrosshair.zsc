@@ -34,7 +34,7 @@ class ballincrosshair : CustomCrosshair {
     }
 
     override void tick() {
-		if(!weapon.owner)
+		if(!weapon || !weapon.owner)
 			return;
         Super.tick();
     }
