@@ -1365,7 +1365,7 @@ class DawnballinProjectile : SelacoItem
 		if (!okaypickup)
 		{
 			countup++;
-			if (countup == 5 || !bUSEBOUNCESTATE)
+			if (countup == 15 || !bUSEBOUNCESTATE)
 			{
 				okaypickup = true;
 			}
