@@ -1108,7 +1108,7 @@ class DawnballinProjectile : SelacoItem
 	
 	Default
 	{
-		Radius 18;
+		Radius 12;
 		Height 24;
 		Speed 20;
 		Damage 0;
@@ -1137,7 +1137,7 @@ class DawnballinProjectile : SelacoItem
 		Inventory.PickupSound "weapons/sports/bball/rebound";
 		Inventory.PickupMessage "$GOTBBALLREBOUND";
 		DropItem "Dawnballin";
-		Tag "$ACT_GRAB";
+		Tag "$TAGBASKETBALL";
 		+SelacoItem.preventSleep;
 		+SelacoItem.Essential;
 		-SelacoItem.SleepWhenFar;
@@ -1160,6 +1160,7 @@ class DawnballinProjectile : SelacoItem
 	bool okaypickup;
 	bool firstbounce;
 	bool healballactive;
+	bool given;
 	
 	// The basketball projectile summons an additional hitbox actor that
 	// allows the player to pick up the ball from a further distance than
@@ -1299,12 +1300,14 @@ class DawnballinProjectile : SelacoItem
 	override void Touch(Actor toucher)
 	{	
 		//console.printf("Projectile Touch");
+		if(given) {return;}
 		if (healballactive && target && (toucher != target || okaypickup) && (toucher is 'PlayerPawn'))
 		{
 			toucher.A_SelectWeapon("Dawnballin");
 			toucher.A_GiveInventory("SelacoArmor", 100);
 			Dawn(toucher).healPlayer(500);
 			//console.printf("Projectile Give Player Heal");
+			given = true;
 			Super.Touch(toucher);
 		}
 		
@@ -1312,6 +1315,7 @@ class DawnballinProjectile : SelacoItem
 		{
 			//console.printf("Projectile Give Player");
 			toucher.A_SelectWeapon("Dawnballin");
+			given = true;
 			Super.Touch(toucher);
 		}
 	}
@@ -1406,11 +1410,15 @@ class DawnballinPickupCollider : ThrowableActor
 //		+NOCLIP
 		+NOFEAR
 		+ACTIVATEPCROSS;
-		-solid;
+		+solid;
+		-NOBLOCKMAP;
+		+USESPECIAL;
+		Activation THINGSPEC_Activate;
 		Damage 0;
 		damageType "ExplosiveImpact";
 		ThrowableActor.DamageToGlass 99999;
 		ThrowableActor.GlassDamping 0.65;
+		SelacoActor.UseTag "$TAGBASKETBALL";
 		SeeSound "";
 		//Debug properties for visualizing the collider
 //		Scale 0.5;
@@ -1429,22 +1437,30 @@ class DawnballinPickupCollider : ThrowableActor
 		}
 	}
 
+	override void Activate(actor activator)
+	{
+		touch(activator);
+	}
+
 	override bool CanCollideWith(actor other, bool passive)
 	{
 		//console.printf("Collider CanCollideWith %d", level.maptime);
 		touch(other);
-		return super.CanCollideWith(other, passive);
+		return false;
 	}
 	
 	override void Tick()
 	{
+		if (!master)
+		{
+			Destroy();
+			return;
+		}
+		SetOrigin((master.pos.x, master.pos.y, master.pos.z - 8), true);
 		Super.Tick();
 		GlassHandler.GlassExplosion(self, 25, 100);
 		// If there's no Basketball, remove the hitbox actor.
-		if (!master)
-		{
-			self.destroy();
-		}
+
 	}
 	
 	//Debug graphics for visualizing the collider
@@ -1487,14 +1503,19 @@ class DawnballinDropped : SelacoItem
 //		DawnballinDropped.PointsToGive 50;
 	}
 	
+	override void PostBeginPlay()
+	{
+		Super.PostBeginPlay();
+		A_SpawnItemEx("bballmapicon", flags:SXF_SETMASTER);
+	}
+
 	States
 	{
 	Spawn:
-
-		BASB A 35 A_SPAWNITEMEX("bballmapicon", flags:SXF_SETMASTER);
-
+		BASB A 1;
 		Loop;
 	}
+
 	override bool TryPickup (in out Actor toucher)
 	{
 		bDROPPED = false;
